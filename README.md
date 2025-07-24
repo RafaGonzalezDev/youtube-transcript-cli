@@ -6,7 +6,7 @@ CLI tool to download YouTube video transcripts in Markdown format.
 
 - Extracts YouTube video ID from any URL format
 - Downloads transcript in the specified language
-- Formats transcript with timestamps and saves it to a .md file
+- Formats transcript and saves it to a .md file
 
 ## Requirements
 
@@ -50,15 +50,9 @@ The generated `transcript.md` file will have a format similar to this:
 
 URL: https://www.youtube.com/watch?v=PR__eFQsnhg
 
-## [00:05]
-
 Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 
-## [00:12]
-
 Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-
-## [00:20]
 
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 ```
