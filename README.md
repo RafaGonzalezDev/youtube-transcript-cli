@@ -1,4 +1,4 @@
-# YT-Transcript
+# youtube-transcript-cli
 
 CLI tool to download YouTube video transcripts in Markdown format.
 
