@@ -1,6 +1,7 @@
 import sys
 import re
 import argparse
+import requests
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from urllib.parse import urlparse
 
@@ -54,23 +55,24 @@ def get_transcript(video_id, language=None):
         # This should be unreachable if the initial check passed, but is here for safety
         raise ValueError("No transcripts available for this video.")
 
-def group_segments(transcript, max_gap=2.0):
-    """Agrupa segmentos de transcripción que están cerca en el tiempo."""
-    groups = []
-    current_group = []
-    for t in transcript:
-        if not current_group:
-            current_group.append(t)
-            continue
-        prev_end = current_group[-1].start + current_group[-1].duration
-        if t.start - prev_end < max_gap:
-            current_group.append(t)
-        else:
-            groups.append(current_group)
-            current_group = [t]
-    if current_group:
-        groups.append(current_group)
-    return groups
+def get_video_title(url):
+    """Extract video title from YouTube URL."""
+    try:
+        video_id = extract_video_id(url)
+        if not video_id:
+            return None
+        
+        # Use YouTube's oEmbed API to get video title
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+        response = requests.get(oembed_url, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('title', '')
+    except Exception:
+        pass
+    
+    return None
 
 def format_transcript_to_markdown(transcript, url):
     """
@@ -81,20 +83,26 @@ def format_transcript_to_markdown(transcript, url):
     Returns:
         str: Contenido Markdown formateado.
     """
-    grouped_segments = group_segments(transcript)
-    markdown_content = f"# Video Transcript\n\nURL: {url}\n\n"
-    for group in grouped_segments:
-        texts = " ".join([seg.text for seg in group])
-        markdown_content += f"{texts}\n\n"
-    return markdown_content.strip()
+    title = get_video_title(url) or "Video Transcript"
+    markdown_content = f"# {title}\n\nURL: {url}\n\n"
+    
+    # Concatenate all transcript segments into a single paragraph
+    transcript_text = " ".join(segment.text for segment in transcript)
+    markdown_content += transcript_text
+    
+    return markdown_content
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download YouTube video transcript.")
+    parser.add_argument("url", nargs="?", help="YouTube video URL")
     parser.add_argument("-o", "--output", default="transcript.md", help="Output filename")
     parser.add_argument("-l", "--language", help="Transcript language (e.g., 'en', 'es')")
 
     args = parser.parse_args()
-    url = input("Please enter the YouTube video URL: ")
+    if args.url:
+        url = args.url
+    else:
+        url = input("Please enter the YouTube video URL: ")
 
     # URL validation
     if not urlparse(url).scheme:
