@@ -24,6 +24,21 @@ if not exist "requirements.txt" (
     exit /b
 )
 
+REM Check if required libraries are already installed
+echo Checking required Python libraries...
+set "NEED_INSTALL=0"
+call :check_module youtube_transcript_api || set "NEED_INSTALL=1"
+call :check_module requests || set "NEED_INSTALL=1"
+call :check_module bs4 || set "NEED_INSTALL=1"
+
+if "%NEED_INSTALL%"=="0" (
+    echo All required libraries are already installed.
+    echo.
+    goto launch_app
+)
+
+echo.
+
 REM Show dependencies and ask for confirmation
 echo The following Python libraries will be installed:
 echo - youtube-transcript-api ^(^>=0.6.0^)
@@ -42,6 +57,14 @@ if /i "%install_choice%"=="NO" goto skip_install
 echo Invalid choice. Please enter Y or N.
 pause
 exit /b
+
+:check_module
+python -c "import %~1" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Missing: %~1
+    exit /b 1
+)
+exit /b 0
 
 :install
 echo.
