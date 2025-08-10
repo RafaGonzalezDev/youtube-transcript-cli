@@ -34,7 +34,7 @@ call :check_module bs4 || set "NEED_INSTALL=1"
 if "%NEED_INSTALL%"=="0" (
     echo All required libraries are already installed.
     echo.
-    goto launch_app
+    goto confirm_launch_ready
 )
 
 echo.
@@ -82,24 +82,53 @@ if %errorlevel% neq 0 (
 
 echo.
 echo All libraries installed successfully!
-goto launch_app
+goto confirm_launch_ready
 
 :skip_install
 echo.
 echo Skipping library installation.
 echo Note: The application may not work if required libraries are missing.
 echo.
+goto confirm_launch_missing
+
+:confirm_launch_ready
+echo Do you want to open the application now? (Y/N):
+set /p open_choice="Open application? (Y/N): "
+for %%i in ("%open_choice%") do set "open_choice=%%~i"
+if /i "%open_choice%"=="Y" goto launch_app
+if /i "%open_choice%"=="YES" goto launch_app
+if /i "%open_choice%"=="N" goto end_no_launch
+if /i "%open_choice%"=="NO" goto end_no_launch
+echo Invalid choice. Please enter Y or N.
+goto end_no_launch
+
+:confirm_launch_missing
+echo Warning: Some required libraries are missing.
+set /p open_choice="Open application anyway? (Y/N): "
+for %%i in ("%open_choice%") do set "open_choice=%%~i"
+if /i "%open_choice%"=="Y" goto launch_app
+if /i "%open_choice%"=="YES" goto launch_app
+if /i "%open_choice%"=="N" goto end_no_launch
+if /i "%open_choice%"=="NO" goto end_no_launch
+echo Invalid choice. Please enter Y or N.
+goto end_no_launch
 
 :launch_app
 echo Starting YouTube Transcript Downloader...
 echo.
 
-python desktop_app.py
-
-if %errorlevel% neq 0 (
-    echo.
-    echo Error: Failed to start the application.
-    echo This might be due to missing dependencies or Python issues.
+REM Prefer pythonw.exe to avoid keeping the console window open
+where pythonw >nul 2>&1
+if %errorlevel%==0 (
+    start "" pythonw.exe "%~dp0desktop_app.py"
+) else (
+    REM Fallback: start with python (console app) in a new process
+    start "" python "%~dp0desktop_app.py"
 )
 
-pause
+REM Close this script window after launching the app
+exit /b
+
+:end_no_launch
+echo Exiting without launching the application.
+exit /b
