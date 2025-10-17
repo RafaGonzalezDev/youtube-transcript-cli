@@ -58,53 +58,216 @@ class YouTubeTranscriptGUI:
         self.controller = controller or TranscriptController()
 
         self.root.title("YouTube Transcript Downloader")
-        self.root.geometry("720x520")
-        self.root.minsize(600, 420)
+        self.root.geometry("960x640")
+        self.root.minsize(880, 560)
 
         self.url_var = tk.StringVar()
         self.output_var = tk.StringVar(value="youtube_transcript")
         self.language_var = tk.StringVar(value=AUTO_LANGUAGE_LABEL)
         self.status_var = tk.StringVar(value="Ready")
 
+        self._colors = {
+            "background": "#f8fafc",
+            "card": "#ffffff",
+            "accent": "#2563eb",
+            "accent_hover": "#1d4ed8",
+            "muted": "#64748b",
+            "border": "#e2e8f0",
+            "text": "#0f172a",
+        }
+
         self.current_markdown: Optional[str] = None
         self.current_transcript = None
         self._language_refresh_job: Optional[str] = None
         self._last_language_url: Optional[str] = None
 
+        self._setup_theme()
         self._build_layout()
         self._setup_shortcuts()
         self.url_var.trace_add("write", self._schedule_language_refresh)
+
+    def _setup_theme(self) -> None:
+        """Configure a modern-looking ttk theme."""
+        self.root.configure(bg=self._colors["background"])
+
+        style = ttk.Style(self.root)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            # Fall back to the default theme if clam is unavailable.
+            pass
+
+        style.configure("TFrame", background=self._colors["background"])
+        style.configure("TLabel", background=self._colors["background"], foreground=self._colors["text"])
+
+        style.configure("App.TFrame", background=self._colors["background"])
+        style.configure("Card.TFrame", background=self._colors["card"], relief="flat", borderwidth=1)
+        style.configure("Preview.TFrame", background=self._colors["background"])
+
+        style.configure(
+            "Title.TLabel",
+            font=("Segoe UI", 18, "bold"),
+            foreground=self._colors["text"],
+            background=self._colors["background"],
+        )
+        style.configure(
+            "Subtitle.TLabel",
+            font=("Segoe UI", 10),
+            foreground=self._colors["muted"],
+            background=self._colors["background"],
+        )
+        style.configure(
+            "Section.TLabel",
+            font=("Segoe UI", 12, "bold"),
+            foreground=self._colors["text"],
+            background=self._colors["card"],
+        )
+        style.configure(
+            "FieldLabel.TLabel",
+            font=("Segoe UI", 9, "bold"),
+            foreground=self._colors["muted"],
+            background=self._colors["card"],
+        )
+        style.configure(
+            "Body.TLabel",
+            font=("Segoe UI", 9),
+            foreground=self._colors["muted"],
+            background=self._colors["card"],
+        )
+        style.configure(
+            "Status.TLabel",
+            font=("Segoe UI", 9),
+            foreground=self._colors["muted"],
+            background=self._colors["background"],
+        )
+
+        style.configure(
+            "Accent.TButton",
+            font=("Segoe UI", 10, "bold"),
+            padding=(14, 10),
+            background=self._colors["accent"],
+            foreground="#ffffff",
+            relief="flat",
+        )
+        style.map(
+            "Accent.TButton",
+            background=[
+                ("disabled", self._colors["border"]),
+                ("pressed", self._colors["accent_hover"]),
+                ("active", self._colors["accent_hover"]),
+            ],
+            foreground=[("disabled", "#ffffff")],
+        )
+
+        style.configure(
+            "Ghost.TButton",
+            font=("Segoe UI", 10),
+            padding=(12, 8),
+            background=self._colors["card"],
+            foreground=self._colors["muted"],
+            relief="flat",
+        )
+        style.map(
+            "Ghost.TButton",
+            background=[
+                ("disabled", self._colors["border"]),
+                ("pressed", self._colors["border"]),
+                ("active", self._colors["border"]),
+            ],
+            foreground=[("disabled", "#94a3b8")],
+        )
+
+        style.configure(
+            "Card.TEntry",
+            fieldbackground="#ffffff",
+            foreground=self._colors["text"],
+            padding=8,
+            relief="flat",
+        )
+        style.map(
+            "Card.TEntry",
+            foreground=[("disabled", self._colors["muted"])],
+            fieldbackground=[("disabled", self._colors["border"])],
+        )
+
+        style.configure(
+            "Card.TCombobox",
+            fieldbackground="#ffffff",
+            foreground=self._colors["text"],
+            padding=6,
+            relief="flat",
+        )
+        style.map(
+            "Card.TCombobox",
+            foreground=[("disabled", self._colors["muted"])],
+            fieldbackground=[("readonly", "#ffffff")],
+        )
+
+        style.configure(
+            "Accent.Horizontal.TProgressbar",
+            troughcolor=self._colors["card"],
+            background=self._colors["accent"],
+        )
+
+        self.style = style
 
     def _build_layout(self) -> None:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        container = ttk.Frame(self.root, padding=20)
+        container = ttk.Frame(self.root, padding=(28, 24, 28, 20), style="App.TFrame")
         container.grid(row=0, column=0, sticky="nsew")
         container.columnconfigure(0, weight=1)
-        container.rowconfigure(6, weight=1)
+        container.rowconfigure(1, weight=1)
 
-        header = ttk.Label(container, text="YouTube Transcript Downloader", font=("", 14, "bold"))
-        header.grid(row=0, column=0, sticky="w")
+        header = ttk.Frame(container, style="App.TFrame")
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
 
-        description = ttk.Label(container, text="Paste a YouTube link, fetch the transcript, then save it as Markdown.")
-        description.grid(row=1, column=0, sticky="w", pady=(2, 16))
+        ttk.Label(header, text="YouTube Transcript Downloader", style="Title.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(
+            header,
+            text="Recupera, revisa y guarda transcripciones en cuestión de segundos.",
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
-        form = ttk.Frame(container)
-        form.grid(row=2, column=0, sticky="ew")
-        form.columnconfigure(1, weight=1)
+        content = ttk.Frame(container, style="App.TFrame")
+        content.grid(row=1, column=0, sticky="nsew", pady=(24, 0))
+        content.columnconfigure(0, weight=4, minsize=420)
+        content.columnconfigure(1, weight=6, minsize=460)
+        content.rowconfigure(0, weight=1)
 
-        ttk.Label(form, text="Video URL").grid(row=0, column=0, sticky="w", pady=4)
-        self.url_entry = ttk.Entry(form, textvariable=self.url_var)
-        self.url_entry.grid(row=0, column=1, sticky="ew", pady=4, padx=(12, 0))
+        controls_card = ttk.Frame(content, style="Card.TFrame", padding=(24, 24, 24, 24))
+        controls_card.grid(row=0, column=0, sticky="nsew", padx=(0, 16))
+        controls_card.columnconfigure(0, weight=1)
+        controls_card.rowconfigure(9, weight=1)
 
-        ttk.Label(form, text="Filename").grid(row=1, column=0, sticky="w", pady=4)
-        self.output_entry = ttk.Entry(form, textvariable=self.output_var)
-        self.output_entry.grid(row=1, column=1, sticky="ew", pady=4, padx=(12, 0))
+        preview_card = ttk.Frame(content, style="Card.TFrame", padding=(24, 24, 24, 20))
+        preview_card.grid(row=0, column=1, sticky="nsew")
+        preview_card.columnconfigure(0, weight=1)
+        preview_card.rowconfigure(2, weight=1)
 
-        ttk.Label(form, text="Language").grid(row=2, column=0, sticky="w", pady=4)
-        language_row = ttk.Frame(form)
-        language_row.grid(row=2, column=1, sticky="ew", pady=4, padx=(12, 0))
+        ttk.Label(controls_card, text="Datos del vídeo", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            controls_card,
+            text="Pega la URL del vídeo y elige cómo quieres guardar la transcripción.",
+            style="Body.TLabel",
+            wraplength=320,
+        ).grid(row=1, column=0, sticky="w", pady=(4, 18))
+
+        ttk.Label(controls_card, text="Video URL", style="FieldLabel.TLabel").grid(row=2, column=0, sticky="w")
+        self.url_entry = ttk.Entry(controls_card, textvariable=self.url_var, style="Card.TEntry")
+        self.url_entry.grid(row=3, column=0, sticky="ew", pady=(4, 16))
+
+        ttk.Label(controls_card, text="Filename", style="FieldLabel.TLabel").grid(row=4, column=0, sticky="w")
+        self.output_entry = ttk.Entry(controls_card, textvariable=self.output_var, style="Card.TEntry")
+        self.output_entry.grid(row=5, column=0, sticky="ew", pady=(4, 16))
+
+        ttk.Label(controls_card, text="Language", style="FieldLabel.TLabel").grid(row=6, column=0, sticky="w")
+        language_row = ttk.Frame(controls_card, style="Card.TFrame")
+        language_row.grid(row=7, column=0, sticky="ew", pady=(4, 0))
         language_row.columnconfigure(0, weight=1)
 
         self.language_combo = ttk.Combobox(
@@ -112,63 +275,117 @@ class YouTubeTranscriptGUI:
             textvariable=self.language_var,
             state="readonly",
             values=[AUTO_LANGUAGE_LABEL],
+            style="Card.TCombobox",
         )
         self.language_combo.grid(row=0, column=0, sticky="ew")
 
-        button_row = ttk.Frame(container)
-        button_row.grid(row=3, column=0, sticky="ew", pady=(16, 0))
-        for col in range(3):
-            button_row.columnconfigure(col, weight=1)
+        self.refresh_button = ttk.Button(
+            language_row,
+            text="Actualizar",
+            style="Ghost.TButton",
+            command=self.refresh_languages,
+            takefocus=False,
+        )
+        self.refresh_button.grid(row=0, column=1, sticky="w", padx=(12, 0))
 
-        self.fetch_button = ttk.Button(button_row, text="Fetch", command=self.fetch_transcript, takefocus=False)
-        self.fetch_button.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Label(
+            controls_card,
+            text="Mantén \"Auto\" para detectar el idioma automáticamente.",
+            style="Body.TLabel",
+            wraplength=280,
+        ).grid(row=8, column=0, sticky="w", pady=(8, 0))
+
+        ttk.Frame(controls_card, style="Card.TFrame").grid(row=9, column=0, sticky="nsew")
+
+        button_row = ttk.Frame(controls_card, style="Card.TFrame")
+        button_row.grid(row=10, column=0, sticky="ew", pady=(24, 0))
+        button_row.columnconfigure(0, weight=2, uniform="buttons")
+        button_row.columnconfigure(1, weight=2, uniform="buttons")
+        button_row.columnconfigure(2, weight=1, uniform="buttons")
+
+        self.fetch_button = ttk.Button(
+            button_row,
+            text="Fetch Transcript",
+            style="Accent.TButton",
+            command=self.fetch_transcript,
+            takefocus=False,
+        )
+        self.fetch_button.grid(row=0, column=0, sticky="ew", padx=(0, 8))
 
         self.download_button = ttk.Button(
             button_row,
             text="Save",
+            style="Accent.TButton",
             command=self.download_transcript,
             state="disabled",
             takefocus=False,
         )
-        self.download_button.grid(row=0, column=1, sticky="ew", padx=6)
+        self.download_button.grid(row=0, column=1, sticky="ew", padx=4)
 
-        clear_button = ttk.Button(button_row, text="Clear", command=self.clear_fields, takefocus=False)
-        clear_button.grid(row=0, column=2, sticky="ew", padx=(6, 0))
+        clear_button = ttk.Button(
+            button_row,
+            text="Clear",
+            style="Ghost.TButton",
+            command=self.clear_fields,
+            takefocus=False,
+        )
+        clear_button.grid(row=0, column=2, sticky="ew", padx=(8, 0))
 
-        self.progress = ttk.Progressbar(container, mode="indeterminate")
-        self.progress.grid(row=4, column=0, sticky="ew", pady=(12, 0))
+        self.progress = ttk.Progressbar(controls_card, mode="indeterminate", style="Accent.Horizontal.TProgressbar")
+        self.progress.grid(row=11, column=0, sticky="ew", pady=(18, 0))
         self.progress.grid_remove()
 
-        preview_header = ttk.Frame(container)
-        preview_header.grid(row=5, column=0, sticky="ew", pady=(20, 6))
+        preview_header = ttk.Frame(preview_card, style="Card.TFrame")
+        preview_header.grid(row=0, column=0, sticky="ew")
         preview_header.columnconfigure(0, weight=1)
 
-        ttk.Label(preview_header, text="Transcript Preview").grid(row=0, column=0, sticky="w")
-        self.preview_info = ttk.Label(preview_header, text="", foreground="grey")
+        ttk.Label(preview_header, text="Transcript Preview", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        self.preview_info = ttk.Label(preview_header, text="", style="Body.TLabel")
         self.preview_info.grid(row=0, column=1, sticky="e")
 
-        preview_frame = ttk.Frame(container, relief="groove", borderwidth=1)
-        preview_frame.grid(row=6, column=0, sticky="nsew")
-        preview_frame.columnconfigure(0, weight=1)
-        preview_frame.rowconfigure(0, weight=1)
+        ttk.Label(
+            preview_card,
+            text="Consulta el borrador en Markdown y haz ajustes antes de exportarlo.",
+            style="Body.TLabel",
+            wraplength=340,
+        ).grid(row=1, column=0, sticky="w", pady=(12, 14))
+
+        # Use a subtle border to separate the preview area from the background.
+        preview_container = tk.Frame(
+            preview_card,
+            bg=self._colors["background"],
+            highlightbackground=self._colors["border"],
+            highlightcolor=self._colors["border"],
+            highlightthickness=1,
+            bd=0,
+        )
+        preview_container.grid(row=2, column=0, sticky="nsew")
+        preview_container.columnconfigure(0, weight=1)
+        preview_container.rowconfigure(0, weight=1)
 
         self.preview_text = scrolledtext.ScrolledText(
-            preview_frame,
-            height=14,
+            preview_container,
             wrap=tk.WORD,
             undo=False,
-            font=("", 10),
+            font=("JetBrains Mono", 10),
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            background=self._colors["background"],
+            foreground=self._colors["text"],
+            insertbackground=self._colors["accent"],
+            padx=16,
+            pady=16,
         )
         self.preview_text.grid(row=0, column=0, sticky="nsew")
 
-        status_frame = ttk.Frame(container)
-        status_frame.grid(row=7, column=0, sticky="ew", pady=(12, 0))
+        status_frame = ttk.Frame(container, style="App.TFrame", padding=(0, 24, 0, 0))
+        status_frame.grid(row=2, column=0, sticky="ew")
         status_frame.columnconfigure(0, weight=1)
 
-        ttk.Separator(status_frame, orient="horizontal").grid(row=0, column=0, sticky="ew", pady=(0, 8))
-
-        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="w")
-        self.status_label.grid(row=1, column=0, sticky="ew")
+        ttk.Separator(status_frame, orient="horizontal").grid(row=0, column=0, sticky="ew")
+        self.status_label = ttk.Label(status_frame, textvariable=self.status_var, style="Status.TLabel")
+        self.status_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
 
     def fetch_transcript(self) -> None:
         if not self._validate_url():
@@ -349,8 +566,6 @@ class YouTubeTranscriptGUI:
         self.current_markdown = markdown
         self.current_transcript = transcript
         self._set_language_options(transcript.available_languages)
-        if transcript.language in transcript.available_languages:
-            self.language_var.set(transcript.language)
         self._last_language_url = transcript.url
 
         self.preview_text.delete(1.0, tk.END)
@@ -366,7 +581,14 @@ class YouTubeTranscriptGUI:
     def _set_loading(self, is_loading: bool, status: Optional[str] = None) -> None:
         if status:
             self.status_var.set(status)
-        widgets = [self.fetch_button, self.url_entry, self.output_entry, self.language_combo]
+        widgets = [
+            self.fetch_button,
+            self.download_button,
+            self.refresh_button,
+            self.url_entry,
+            self.output_entry,
+            self.language_combo,
+        ]
         state = "disabled" if is_loading else "normal"
         for widget in widgets:
             try:
@@ -374,7 +596,6 @@ class YouTubeTranscriptGUI:
             except Exception:
                 pass
         if is_loading:
-            self.progress.grid()
             try:
                 self.progress.start(10)
             except Exception:
@@ -384,7 +605,6 @@ class YouTubeTranscriptGUI:
                 self.progress.stop()
             except Exception:
                 logger.debug("Failed to stop progress bar animation", exc_info=True)
-            self.progress.grid_remove()
 
     def _validate_url(self) -> bool:
         url = self.url_var.get().strip()
