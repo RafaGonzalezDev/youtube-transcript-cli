@@ -5,8 +5,8 @@ Tool to download YouTube video transcripts in Markdown format. Available as both
 ## Key Features
 
 - **Automatic ID Extraction**: Automatically extracts YouTube video ID from various URL formats
-- **Multi-language Support**: Downloads transcripts in specified language if available
-- **Markdown Formatting**: Converts transcript into clean, readable Markdown file
+- **Multi-language Support**: Download the manual transcript when possible or pick a specific language
+- **Timestamped Markdown**: Converts transcripts into bullet lists with timestamps and metadata
 - **CLI and GUI**: Use the tool from terminal or through a graphical interface
 - **Automated Setup**: Setup script that verifies Python and manages dependencies interactively
 
@@ -62,9 +62,10 @@ Keyboard shortcuts:
 - Ctrl+S: Save/download transcript
 
 UI details:
-- Modernized minimal UI using ttk styles
+- Single column layout with plain ttk widgets for a distraction-free workflow
+- Language selector that auto-discovers manual and auto-generated transcripts
 - Indeterminate progress bar while fetching
-- Status message at the bottom with a smaller font size
+- Live word-count badge above the preview and a simple status line at the bottom
 
 **How it works:**
 1. **Enter URL**: Paste the YouTube video URL
@@ -87,6 +88,7 @@ python app.py "https://www.youtube.com/watch?v=VIDEO_ID"
 **Available options:**
 - `-o` or `--output`: Specify output filename (default: `transcript.md`)
 - `-l` or `--language`: Define transcript language (e.g., `en`, `es`)
+- `--list-languages`: Enumerate available transcripts for the URL without downloading
 
 **Example:**
 ```bash
@@ -98,13 +100,15 @@ python app.py -l es -o my_transcript.md
 The generated `.md` file will have the following structure:
 
 ```markdown
-# Video Transcript
+# Example Video Title
 
-URL: https://www.youtube.com/watch?v=VIDEO_ID_HERE
+- Video URL: https://www.youtube.com/watch?v=VIDEO_ID_HERE
+- Language: en
+- Available languages: en, es
 
-This is the first paragraph of the transcript, combining several spoken segments for readability.
-
-This is the next paragraph, ensuring the text flows naturally.
+- [00:00] First line spoken in the video
+- [00:05] Second line with a helpful timestamp
+- [00:12] Additional segments keep the list readable
 ```
 
 ## Fonts
@@ -133,3 +137,11 @@ If the desktop application doesn't run:
 2. Run manually: `python desktop_app.py`
 3. Check error messages in terminal
 4. On Windows, to keep the console open for diagnostics, use manual launch instead of the `.bat` script (the script launches with `pythonw.exe` and closes the console)
+
+## Testing
+
+Run unit tests with:
+
+```bash
+pytest
+```
