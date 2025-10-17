@@ -3,6 +3,10 @@ from core.model import TranscriptData, TranscriptSegment
 
 
 def test_markdown_formatter_renders_metadata_and_segments():
+    """
+    Tests that the MarkdownFormatter correctly renders a complete Markdown document,
+    including the title, URL, language, and formatted transcript segments.
+    """
     formatter = MarkdownFormatter()
     transcript = TranscriptData(
         video_id="dQw4w9WgXcQ",

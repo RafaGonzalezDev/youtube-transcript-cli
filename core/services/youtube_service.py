@@ -24,14 +24,40 @@ YOUTUBE_ID_PATTERNS = [
 
 
 class YouTubeService:
-    """Encapsulates interactions with the YouTube transcript and metadata APIs."""
+    """
+    Encapsulates interactions with YouTube for fetching transcripts and metadata.
+
+    This service handles:
+    - Extracting video IDs from various YouTube URL formats.
+    - Fetching available transcript languages.
+    - Retrieving transcript data using the `youtube_transcript_api`.
+    - Getting video titles by querying YouTube's oEmbed endpoint or by scraping.
+    """
 
     def __init__(self, session: Optional[requests.Session] = None, timeout: int = 5) -> None:
+        """
+        Initializes the YouTubeService.
+
+        Args:
+            session: An optional requests.Session object to use for HTTP requests.
+            timeout: The timeout in seconds for HTTP requests.
+        """
         self._session = session or requests.Session()
         self._timeout = timeout
 
     @staticmethod
     def extract_video_id(url: str) -> Optional[str]:
+        """
+        Extracts the 11-character video ID from a YouTube URL.
+
+        Supports various URL formats (watch, youtu.be, embed).
+
+        Args:
+            url: The YouTube URL.
+
+        Returns:
+            The extracted video ID, or None if no valid ID is found.
+        """
         if not url:
             return None
         for pattern in YOUTUBE_ID_PATTERNS:
@@ -43,6 +69,28 @@ class YouTubeService:
     def fetch_transcript(
         self, video_id: str, language: Optional[str] = None
     ) -> Tuple[List[TranscriptSegment], List[str], str, Optional[bool]]:
+        """
+        Fetches the transcript for a given video ID.
+
+        It prioritizes the requested language, falls back to manually created
+        transcripts, and finally to any available transcript if necessary.
+
+        Args:
+            video_id: The ID of the YouTube video.
+            language: The preferred language code (e.g., 'en', 'es'). If None,
+                      it attempts to find the best available transcript.
+
+        Raises:
+            ValueError: If no transcripts are found or the requested language
+                        is unavailable.
+
+        Returns:
+            A tuple containing:
+            - A list of TranscriptSegment objects.
+            - A list of all available language codes.
+            - The language code of the fetched transcript.
+            - A boolean indicating if the transcript was auto-generated (or None).
+        """
         transcript_list, available_languages = self._get_transcript_list(video_id)
 
         transcript = None
@@ -86,12 +134,34 @@ class YouTubeService:
         return segments, unique_languages, transcript.language_code, transcript.is_generated
 
     def list_available_languages(self, video_id: str) -> Tuple[List[str], List[str]]:
+        """
+        Lists the available manual and auto-generated transcript languages.
+
+        Args:
+            video_id: The ID of the YouTube video.
+
+        Returns:
+            A tuple containing two sorted lists: (manual_languages, generated_languages).
+        """
         transcript_list, _ = self._get_transcript_list(video_id)
         manual = sorted({t.language_code for t in transcript_list if not t.is_generated})
         generated = sorted({t.language_code for t in transcript_list if t.is_generated})
         return manual, generated
 
     def _get_transcript_list(self, video_id: str):
+        """
+        Retrieves the list of available transcripts for a video.
+
+        Args:
+            video_id: The ID of the YouTube video.
+
+        Raises:
+            ValueError: If transcripts are disabled or not found for the video.
+
+        Returns:
+            A tuple containing the TranscriptList object and a list of
+            available language codes.
+        """
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         except (TranscriptsDisabled, NoTranscriptFound) as exc:
@@ -103,6 +173,18 @@ class YouTubeService:
         return transcript_list, available_languages
 
     def get_video_title(self, video_id: str) -> Optional[str]:
+        """
+        Fetches the video title for a given video ID.
+
+        It first tries to use the oEmbed endpoint for a reliable JSON response.
+        If that fails, it falls back to scraping the video's watch page HTML.
+
+        Args:
+            video_id: The ID of the YouTube video.
+
+        Returns:
+            The video title as a string, or None if it cannot be fetched.
+        """
         if not video_id:
             return None
         watch_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -133,6 +215,20 @@ class YouTubeService:
 
     @staticmethod
     def _segment_field(segment, name: str, default):
+        """
+        Safely extracts a field from a transcript segment object or dictionary.
+
+        This utility function handles inconsistencies in the structure of segment
+        objects returned by different versions of the underlying API.
+
+        Args:
+            segment: The segment object or dictionary.
+            name: The name of the field to extract (e.g., 'start', 'text').
+            default: The default value to return if the field is not found.
+
+        Returns:
+            The value of the field, or the default value.
+        """
         if isinstance(segment, dict):
             return segment.get(name, default)
 

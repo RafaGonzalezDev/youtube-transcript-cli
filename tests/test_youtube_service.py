@@ -6,23 +6,30 @@ from core.services.youtube_service import YouTubeService
 
 
 def test_extract_video_id_from_standard_url():
+    """Tests that the video ID is correctly extracted from a standard YouTube watch URL."""
     service = YouTubeService()
     video_id = service.extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     assert video_id == "dQw4w9WgXcQ"
 
 
 def test_extract_video_id_from_short_url():
+    """Tests that the video ID is correctly extracted from a shortened youtu.be URL."""
     service = YouTubeService()
     video_id = service.extract_video_id("https://youtu.be/dQw4w9WgXcQ")
     assert video_id == "dQw4w9WgXcQ"
 
 
 def test_extract_video_id_returns_none_for_invalid_url():
+    """Tests that None is returned when the URL is not a valid YouTube URL."""
     service = YouTubeService()
     assert service.extract_video_id("https://example.com/video") is None
 
 
 def test_segment_field_supports_objects_without_get():
+    """
+    Tests that the _segment_field utility can extract data from objects
+    that use attributes instead of a `get` method (i.e., are not dicts).
+    """
     service = YouTubeService()
 
     class SegmentObject:
@@ -39,6 +46,10 @@ def test_segment_field_supports_objects_without_get():
 
 
 def test_fetch_transcript_deduplicates_languages(monkeypatch):
+    """
+    Tests that the list of available languages is correctly deduplicated
+    when a language is available in both manual and generated forms.
+    """
     service = YouTubeService()
 
     class FakeTranscript:

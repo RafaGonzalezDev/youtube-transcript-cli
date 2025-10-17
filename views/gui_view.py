@@ -53,7 +53,25 @@ def load_private_fonts(font_dir: str) -> None:
 
 
 class YouTubeTranscriptGUI:
+    """
+    The main class for the Tkinter-based GUI.
+
+    This class is responsible for building and managing the user interface,
+    handling user interactions (e.g., button clicks, text input), and
+    coordinating with the TranscriptController to fetch and display
+    YouTube video transcripts.
+    """
     def __init__(self, root: tk.Tk, controller: Optional[TranscriptController] = None) -> None:
+        """
+        Initializes the GUI.
+
+        Sets up the main window, state variables, color theme, widget layout,
+        and event bindings.
+
+        Args:
+            root: The root Tkinter window.
+            controller: The controller instance for handling business logic.
+        """
         self.root = root
         self.controller = controller or TranscriptController()
 
@@ -212,6 +230,7 @@ class YouTubeTranscriptGUI:
         self.style = style
 
     def _build_layout(self) -> None:
+        """Constructs and arranges all the widgets in the main window."""
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
@@ -388,6 +407,7 @@ class YouTubeTranscriptGUI:
         self.status_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
 
     def fetch_transcript(self) -> None:
+        """Starts the process of fetching a transcript for the given URL."""
         if not self._validate_url():
             return
 
@@ -401,6 +421,7 @@ class YouTubeTranscriptGUI:
         thread.start()
 
     def download_transcript(self) -> None:
+        """Opens a save dialog to download the fetched transcript as a Markdown file."""
         if not self._validate_filename():
             return
         if not self.current_markdown:
@@ -428,9 +449,11 @@ class YouTubeTranscriptGUI:
                 messagebox.showerror("Error", f"Failed to save file: {exc}")
 
     def refresh_languages(self) -> None:
+        """Forces a refresh of the available transcript languages for the current URL."""
         self._auto_refresh_languages(force=True)
 
     def clear_fields(self) -> None:
+        """Resets all input fields and the preview area to their default states."""
         if self._language_refresh_job:
             self.root.after_cancel(self._language_refresh_job)
             self._language_refresh_job = None
@@ -447,6 +470,12 @@ class YouTubeTranscriptGUI:
         self.language_combo["values"] = [AUTO_LANGUAGE_LABEL]
 
     def _schedule_language_refresh(self, *_args) -> None:
+        """
+        Schedules a delayed refresh of the language list.
+
+        This is triggered when the user types in the URL entry field, and it
+        avoids making excessive requests while the user is still typing.
+        """
         if self._language_refresh_job:
             try:
                 self.root.after_cancel(self._language_refresh_job)
@@ -455,6 +484,12 @@ class YouTubeTranscriptGUI:
         self._language_refresh_job = self.root.after(600, self._auto_refresh_languages)
 
     def _auto_refresh_languages(self, force: bool = False) -> None:
+        """
+        Automatically refreshes the language list if the URL has changed.
+
+        Args:
+            force: If True, forces a refresh even if the URL hasn't changed.
+        """
         self._language_refresh_job = None
         url = self.url_var.get().strip()
         if not url:
@@ -476,6 +511,14 @@ class YouTubeTranscriptGUI:
         self._load_languages(url, notify=force, use_loading=force)
 
     def _load_languages(self, url: str, notify: bool, use_loading: bool) -> None:
+        """
+        Initiates the background thread to fetch available languages.
+
+        Args:
+            url: The YouTube video URL.
+            notify: Whether to show a status update to the user.
+            use_loading: Whether to show the main loading indicator.
+        """
         if use_loading:
             self._set_loading(True, "Checking languages...")
         elif notify:
@@ -486,6 +529,12 @@ class YouTubeTranscriptGUI:
         thread.start()
 
     def _set_language_options(self, languages: list[str]) -> None:
+        """
+        Updates the language dropdown with a new list of languages.
+
+        Args:
+            languages: A list of language codes.
+        """
         unique_values = [AUTO_LANGUAGE_LABEL] + sorted(set(languages))
         current = self.language_var.get()
         self.language_combo["values"] = unique_values
@@ -493,6 +542,16 @@ class YouTubeTranscriptGUI:
             self.language_var.set(AUTO_LANGUAGE_LABEL)
 
     def _languages_worker(self, url: str, notify: bool, use_loading: bool) -> None:
+        """
+        The background worker that calls the controller to list languages.
+
+        This runs in a separate thread to avoid blocking the GUI.
+
+        Args:
+            url: The YouTube video URL.
+            notify: Whether to show a status update to the user.
+            use_loading: Whether to show the main loading indicator.
+        """
         try:
             manual, generated = self.controller.list_languages(url)
             self.root.after(0, self._languages_success, url, manual, generated, notify, use_loading)
@@ -512,6 +571,18 @@ class YouTubeTranscriptGUI:
     def _languages_success(
         self, url: str, manual: list[str], generated: list[str], notify: bool, use_loading: bool
     ) -> None:
+        """
+        Handles the successful retrieval of the language list.
+
+        This is called on the main GUI thread via `root.after()`.
+
+        Args:
+            url: The URL for which languages were fetched.
+            manual: A list of manually created language codes.
+            generated: A list of auto-generated language codes.
+            notify: Whether to show a status update to the user.
+            use_loading: Whether the main loading indicator was active.
+        """
         if use_loading:
             self._set_loading(False)
         unique = sorted(set(manual) | set(generated))
@@ -539,6 +610,17 @@ class YouTubeTranscriptGUI:
                 self.status_var.set("No transcripts available for this video")
 
     def _languages_error(self, url: str, message: str, notify: bool, use_loading: bool) -> None:
+        """
+        Handles errors that occur while retrieving the language list.
+
+        This is called on the main GUI thread via `root.after()`.
+
+        Args:
+            url: The URL for which the language fetch failed.
+            message: The error message.
+            notify: Whether to show a status update to the user.
+            use_loading: Whether the main loading indicator was active.
+        """
         if use_loading:
             self._set_loading(False)
         if notify:
@@ -550,6 +632,15 @@ class YouTubeTranscriptGUI:
             self.status_var.set("Could not load transcript languages automatically")
 
     def _fetch_worker(self, url: str, language: Optional[str]) -> None:
+        """
+        The background worker that calls the controller to fetch the transcript.
+
+        This runs in a separate thread to avoid blocking the GUI.
+
+        Args:
+            url: The YouTube video URL.
+            language: The selected language code, or None for automatic.
+        """
         try:
             transcript, markdown = self.controller.fetch_transcript(url, language)
             self.root.after(0, self._fetch_success, transcript, markdown)
@@ -560,6 +651,15 @@ class YouTubeTranscriptGUI:
             self.root.after(0, self._operation_error, f"An unexpected error occurred: {exc}")
 
     def _fetch_success(self, transcript, markdown: str) -> None:
+        """
+        Handles the successful retrieval of the transcript.
+
+        This is called on the main GUI thread via `root.after()`.
+
+        Args:
+            transcript: The fetched transcript object.
+            markdown: The formatted Markdown string.
+        """
         self._set_loading(False)
         self.download_button.config(state="normal")
         self.status_var.set(f"Transcript fetched in {transcript.language}")
@@ -574,11 +674,26 @@ class YouTubeTranscriptGUI:
         self.preview_info.config(text=f"{word_count} words")
 
     def _operation_error(self, message: str) -> None:
+        """
+        Displays an error message to the user and resets the loading state.
+
+        Args:
+            message: The error message to display.
+        """
         self._set_loading(False)
         self.status_var.set("Error")
         messagebox.showerror("Error", message)
 
     def _set_loading(self, is_loading: bool, status: Optional[str] = None) -> None:
+        """
+        Enables or disables the loading state of the UI.
+
+        When loading, it disables input widgets and shows a progress bar.
+
+        Args:
+            is_loading: True to enable the loading state, False to disable it.
+            status: An optional status message to display.
+        """
         if status:
             self.status_var.set(status)
         widgets = [
@@ -607,6 +722,7 @@ class YouTubeTranscriptGUI:
                 logger.debug("Failed to stop progress bar animation", exc_info=True)
 
     def _validate_url(self) -> bool:
+        """Validates that the entered URL is a valid YouTube URL."""
         url = self.url_var.get().strip()
         if not url:
             messagebox.showerror("Error", "Please enter a YouTube URL")
@@ -619,6 +735,7 @@ class YouTubeTranscriptGUI:
         return True
 
     def _validate_filename(self) -> bool:
+        """Validates that a filename has been entered."""
         output_file = self.output_var.get().strip()
         if not output_file:
             messagebox.showerror("Error", "Please specify a filename")
@@ -626,11 +743,18 @@ class YouTubeTranscriptGUI:
         return True
 
     def _setup_shortcuts(self) -> None:
+        """Binds keyboard shortcuts to common actions."""
         self.root.bind("<Return>", lambda _event: self.fetch_transcript())
         self.root.bind("<Control-s>", lambda _event: self.download_transcript())
 
 
 def run_gui() -> None:
+    """
+    Initializes and runs the YouTube Transcript Downloader GUI.
+
+    This function sets up the main Tkinter window, loads private fonts,
+    creates the controller and GUI instances, and starts the main event loop.
+    """
     fonts_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "fonts")
     load_private_fonts(os.path.abspath(fonts_dir))
 
